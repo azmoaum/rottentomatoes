@@ -1,8 +1,7 @@
 import requests
 import json
 from optparse import OptionParser
-
-API_KEY = 'a9qbanswywry5hubn5tqmw3t'
+import config
 
 class MovieParser:
     def __init__(self, movie):
@@ -14,30 +13,29 @@ class MovieParser:
         self.year = self.movie['year']
         self.critics_score = self.movie['ratings']['critics_score']
         self.audience_score = self.movie['ratings']['audience_score']
-
-def retreive_json(source):
-    url = {
-        'BoxOffice': 'http://api.rottentomatoes.com/api/public/v1.0/lists/movies/box_office.json?apikey=%s' % API_KEY,
-        'Theaters': 'http://api.rottentomatoes.com/api/public/v1.0/lists/dvds/new_releases.json?apikey=%s' % API_KEY,
-        'Opening': 'http://api.rottentomatoes.com/api/public/v1.0/lists/movies/opening.json?apikey=%s' % API_KEY,
-        'Upcoming': 'http://api.rottentomatoes.com/api/public/v1.0/lists/movies/upcoming.json?apikey=%s' % API_KEY,
-        'TopRentals': 'http://api.rottentomatoes.com/api/public/v1.0/lists/movies/opening.json?apikey=%s' % API_KEY,
-        'CurrentDVD': 'http://api.rottentomatoes.com/api/public/v1.0/lists/dvds/current_releases.json?apikey=%s' % API_KEY,
-        'NewDVD': 'http://api.rottentomatoes.com/api/public/v1.0/lists/dvds/new_releases.json?apikey=%s' % API_KEY,
-        'UpcomingDVD': 'http://api.rottentomatoes.com/api/public/v1.0/lists/dvds/upcoming.json?apikey=%s' % API_KEY
-    }[source]
-    response = requests.get(url)
-    return response.json()
-        
+    
 if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option("-s", "--source", dest="source")
     opts, args = parser.parse_args()
-
-    json = retreive_json(opts.source)
+    
+    if opts.source:
+        if opts.source in config.API_URLS:
+            url = config.API_URLS[opts.source]
+        else:
+            parser.error('Invalid source. Unable to continue')
+    else:
+        parser.error('--source required. Unable to continue')
+    
+    response = requests.get(url)
+    if response.status_code != requests.codes.ok:
+        response.raise_for_status()
+        
+    json = response.json()
+    
     movies = json['movies']
 
-    for movie in movies:
-        print movie['ratings']['audience_score']
-
+    movies = [MovieParser(movie) for movie in movies] 
     
+    for movie in movies:
+        print movie.title, movie.audience_score
